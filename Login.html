@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Access Check</title>
+  <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
+</head>
+<body>
+  <h2>Checking access...</h2>
+
+  <script>
+    // Replace these with your actual Azure AD App values
+    const msalConfig = {
+      auth: {
+        clientId: 'YOUR_CLIENT_ID', // Replace with your App (client) ID
+        authority: 'https://login.microsoftonline.com/YOUR_TENANT_ID', // Replace with your tenant ID
+        redirectUri: 'https://thejapachipala.github.io/qr-access-check/Checkaccess.html' // MUST match in Azure app registration
+      }
+    };
+
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+    async function authenticateUser() {
+      try {
+        // Attempt login
+        const loginResponse = await msalInstance.loginPopup({
+          scopes: ['User.Read']
+        });
+
+        const account = loginResponse.account;
+
+        if (!account) {
+          document.body.innerHTML = "<h2>Login succeeded but no account info found.</h2>";
+          return;
+        }
+
+        // Display the logged-in email
+        const email = account.username;
+        document.body.innerHTML = `<h2>Welcome, ${email}</h2><p>Authentication successful.</p>`;
+
+        // Proceed to Step 2: Check against SharePoint list
+        // Placeholder: checkAccess(email); // we will add this in Step 2
+
+      } catch (error) {
+        console.error("Authentication failed:", error);
+        document.body.innerHTML = "<h2>Login failed</h2><p>See console for details.</p>";
+      }
+    }
+
+    authenticateUser();
+  </script>
+</body>
+</html>
