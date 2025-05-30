@@ -94,7 +94,7 @@
     async function checkUserAccess(token, userEmail) {
       const lowerEmail = userEmail.toLowerCase();
       let hasNext = true;
-      let url = `https://graph.microsoft.com/v1.0/teams/${GRAPH_SITE_ID}/lists/${LIST_NAME}/items?$expand=fields&$select=fields&$top=999`;
+      let url = `https://graph.microsoft.com/v1.0/Sites/${GRAPH_SITE_ID}/lists/${LIST_NAME}/items?$expand=fields&$select=fields&$top=999`;
 
       while (hasNext) {
         const response = await fetch(url, {
