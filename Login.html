@@ -66,7 +66,7 @@
       }
 
       async checkUserAccess(token, email) {
-        let url = `https://graph.microsoft.com/v1.0/sites/${this.graphSiteId}/lists/${this.listName}/items?$expand=fields&$select=fields&$top=999`;
+        let url = `https://graph.microsoft.com/v1.0/sites/${this.graphSiteId}/lists/${encodeURIComponent(this.listName)}/items?$expand=fields&$top=999`;
         let lowerEmail = email.toLowerCase();
 
         while (url) {
