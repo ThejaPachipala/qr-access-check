@@ -8,130 +8,140 @@
   <h2>Checking access...</h2>
   <div id="status"></div>
 
-  <!-- MSAL script -->
+  <!-- MSAL.js -->
   <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
 
   <script>
-    // === CONFIGURATION ===
-    const msalConfig = {
-      auth: {
-        clientId: 'd13c0cca-d75f-4bc9-8dcb-b18315c40d0e', // <-- Replace with your Azure App Client ID
-        authority: 'https://login.microsoftonline.com/a456fbc2-921d-42a4-a7a8-fc0f343ede61', // <-- Replace with your Tenant ID
-        redirectUri: 'https://thejapachipala.github.io/qr-access-check/Login.html' // <-- Replace with your redirect URI registered in Azure
-      }
-    };
+    class SharePointAccessChecker {
+      constructor(config) {
+        this.clientId = config.clientId;
+        this.tenantId = config.tenantId;
+        this.redirectUri = config.redirectUri;
+        this.graphSiteId = config.graphSiteId;
+        this.listName = config.listName;
 
-    const GRAPH_SITE_ID = 'https://smartinfrastructure.sharepoint.com/teams/Pool_Vehicles2'; // <-- Replace with your SharePoint site ID (from MS Graph)
-    const LIST_NAME = 'Approved_Drivers'; // SharePoint list name exactly
-
-    const msalInstance = new msal.PublicClientApplication(msalConfig);
-
-    const STATUS_DIV = document.getElementById('status');
-
-    // Update status message
-    function updateStatus(message, isError = false) {
-      STATUS_DIV.innerHTML = `<p style="color:${isError ? 'red' : 'black'}">${message}</p>`;
-    }
-
-    // Get access token silently or fallback to popup login
-    async function getAccessToken(scopes) {
-      const accounts = msalInstance.getAllAccounts();
-      if (accounts.length === 0) {
-        // No account, force login
-        const loginResponse = await msalInstance.loginPopup({ scopes });
-        return loginResponse.accessToken;
-      }
-      const account = accounts[0];
-      try {
-        const tokenResponse = await msalInstance.acquireTokenSilent({
-          account: account,
-          scopes: scopes,
-        });
-        return tokenResponse.accessToken;
-      } catch (error) {
-        // Silent failed, fallback to popup
-        const loginResponse = await msalInstance.loginPopup({ scopes });
-        return loginResponse.accessToken;
-      }
-    }
-
-    // Authenticate user and check access
-    async function authenticateAndCheckAccess() {
-      updateStatus('Authenticating user...');
-      try {
-        // Request User.Read scope initially to get user info
-        const token = await getAccessToken(['User.Read', 'Sites.Read.All']);
-
-        const accounts = msalInstance.getAllAccounts();
-        if (accounts.length === 0) {
-          updateStatus('No logged in account found.', true);
-          return;
-        }
-        const userEmail = accounts[0].username;
-        updateStatus(`Welcome, ${userEmail}. Checking SharePoint access...`);
-
-        // Check SharePoint list for user's access
-        const hasAccess = await checkUserAccess(token, userEmail);
-        if (hasAccess) {
-          STATUS_DIV.innerHTML = `
-            <h2>Access Granted</h2>
-            <p>Welcome, ${userEmail}</p>
-            <a href="https://forms.cloud.microsoft/r/Saurgpg1XQ" target="_blank" rel="noopener">Go to MS Form</a>
-          `;
-        } else {
-          STATUS_DIV.innerHTML = `
-            <h2>Not Authorized</h2>
-            <p>${userEmail} is not listed in Approved_Drivers.</p>
-          `;
-        }
-      } catch (error) {
-        console.error('Authentication or access check failed:', error);
-        updateStatus('Error during authentication or access check. See console for details.', true);
-      }
-    }
-
-    // Check if user email exists in SharePoint list (with simple pagination)
-    async function checkUserAccess(token, userEmail) {
-      const lowerEmail = userEmail.toLowerCase();
-      let hasNext = true;
-      let url = `https://graph.microsoft.com/v1.0/Sites/${GRAPH_SITE_ID}/lists/${LIST_NAME}/items?$expand=fields&$select=fields&$top=999`;
-
-      while (hasNext) {
-        const response = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/json'
+        this.msalInstance = new msal.PublicClientApplication({
+          auth: {
+            clientId: this.clientId,
+            authority: `https://login.microsoftonline.com/${this.tenantId}`,
+            redirectUri: this.redirectUri,
+          },
+          system: {
+            loggerOptions: {
+              loggerCallback: (level, message, containsPii) => {
+                if (!containsPii) console.log(message);
+              },
+              logLevel: msal.LogLevel.Verbose,
+              piiLoggingEnabled: false
+            }
           }
         });
 
-        if (!response.ok) {
-          throw new Error(`Graph API request failed with status ${response.status}`);
+        this.statusDiv = document.getElementById("status");
+      }
+
+      updateStatus(message, isError = false) {
+        this.statusDiv.innerHTML = `<p style="color:${isError ? 'red' : 'black'}">${message}</p>`;
+      }
+
+      async getAccessToken(scopes) {
+        const accounts = this.msalInstance.getAllAccounts();
+        if (accounts.length === 0) {
+          const loginResponse = await this.msalInstance.loginPopup({ scopes });
+          return loginResponse.accessToken;
         }
 
-        const data = await response.json();
-        const items = data.value || [];
-
-        const match = items.find(item => {
-          // Defensive: check if fields and Username exists
-          const usernameField = item.fields?.Username;
-          if (!usernameField) return false;
-          return usernameField.toLowerCase() === lowerEmail;
-        });
-
-        if (match) return true;
-
-        if (data['@odata.nextLink']) {
-          url = data['@odata.nextLink'];
-        } else {
-          hasNext = false;
+        const account = accounts[0];
+        try {
+          const tokenResponse = await this.msalInstance.acquireTokenSilent({
+            account,
+            scopes
+          });
+          return tokenResponse.accessToken;
+        } catch (error) {
+          console.warn("Silent token acquisition failed, using popup.");
+          const loginResponse = await this.msalInstance.loginPopup({ scopes });
+          return loginResponse.accessToken;
         }
       }
 
-      return false;
+      async checkUserAccess(token, email) {
+        let url = `https://graph.microsoft.com/v1.0/sites/${this.graphSiteId}/lists/${encodeURIComponent(this.listName)}/items?$expand=fields&$top=999`;
+        let lowerEmail = email.toLowerCase();
+
+        while (url) {
+          const response = await fetch(url, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json"
+            }
+          });
+
+          if (!response.ok) {
+            const errorBody = await response.text();
+            throw new Error(`API Error (${response.status}): ${errorBody}`);
+          }
+
+          const data = await response.json();
+          const items = data.value || [];
+
+          const found = items.find(item =>
+            item.fields?.Username?.toLowerCase() === lowerEmail
+          );
+          if (found) return true;
+
+          url = data["@odata.nextLink"];
+        }
+
+        return false;
+      }
+
+      async authenticateAndCheck() {
+        this.updateStatus("Authenticating...");
+        try {
+          const token = await this.getAccessToken(['User.Read', 'Sites.Read.All']);
+
+          const accounts = this.msalInstance.getAllAccounts();
+          if (accounts.length === 0) {
+            this.updateStatus("No account found after login.", true);
+            return;
+          }
+
+          const userEmail = accounts[0].username;
+          this.updateStatus(`Welcome, ${userEmail}. Checking SharePoint access...`);
+
+          const accessGranted = await this.checkUserAccess(token, userEmail);
+          if (accessGranted) {
+            this.statusDiv.innerHTML = `
+              <h2>Access Granted</h2>
+              <p>Welcome, ${userEmail}</p>
+              <a href="https://forms.office.com/your-form-link" target="_blank">Go to MS Form</a>
+            `;
+          } else {
+            this.statusDiv.innerHTML = `
+              <h2>Not Authorized</h2>
+              <p>${userEmail} is not listed in ${this.listName}.</p>
+            `;
+          }
+        } catch (error) {
+          console.error("Authentication or access check failed:", error);
+          this.updateStatus("Error during authentication or access check. See console for details.", true);
+        }
+      }
     }
 
-    // Start the auth & access check flow after MSAL loads
-    authenticateAndCheckAccess();
+    // 🔧 Configuration – replace these placeholders
+    const config = {
+      clientId: "d13c0cca-d75f-4bc9-8dcb-b18315c40d0e",         // 👉 Replace with your Azure AD App ID
+      tenantId: "a456fbc2-921d-42a4-a7a8-fc0f343ede61",         // 👉 Replace with your Azure AD Tenant ID
+      redirectUri: "https://thejapachipala.github.io/qr-access-check/Login.html",  // 👉 Replace if needed
+      graphSiteId: "836c2724-d6b9-48bf-81a2-02d8029f7b1b",        // 👉 Replace with your SharePoint Site ID (Graph format)
+      listName: "Approved_Drivers",       // 👉 SharePoint list title or ID
+    };
+
+    // 🚀 Start the process
+    const checker = new SharePointAccessChecker(config);
+    checker.authenticateAndCheck();
   </script>
 </body>
 </html>
