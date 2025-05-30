@@ -58,7 +58,7 @@
     async function checkAccess(token, userEmail) {
       try {
         // Build URL using hostname + site path + list name
-        const url = `https://graph.microsoft.com/v1.0/teams/${SHAREPOINT_HOSTNAME}:/${SITE_PATH}:/lists/${LIST_NAME}/items?$expand=Username&$top=999`;
+        const url = `https://graph.microsoft.com/v1.0/sites/${SHAREPOINT_HOSTNAME}:/${SITE_PATH}:/lists/${LIST_NAME}/items?$expand=fields&$top=999`;
 
         const response = await fetch(url, {
           headers: {
