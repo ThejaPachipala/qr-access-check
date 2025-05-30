@@ -1,67 +1,62 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Access Check</title>
-  <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
-</head>
-<body>
-  <h2>Checking access...</h2>
+<script>
+  const msalConfig = {
+    auth: {
+      clientId: 'd13c0cca-d75f-4bc9-8dcb-b18315c40d0e',  // ✅ your real client ID
+      authority: 'https://login.microsoftonline.com/a456fbc2-921d-42a4-a7a8-fc0f343ede61',  // ✅ your tenant ID
+      redirectUri: 'https://thejapachipala.github.io/qr-access-check/Login.html'
+    }
+  };
 
-  <script>
-    const msalConfig = {
-      auth: {
-        clientId: 'd13c0cca-d75f-4bc9-8dcb-b18315c40d0e',
-        authority: 'https://login.microsoftonline.com/a456fbc2-921d-42a4-a7a8-fc0f343ede61',
-        redirectUri: 'https://thejapachipala.github.io/qr-access-check/Login.html'
-      }
-    };
+  const GRAPH_SCOPE = ['Sites.Read.All'];
+  const SHAREPOINT_SITE_ID = 'smartinfrastructure.sharepoint.com,teams/Pool_Vehicles2'; // 👈 Replace "GUID" below
+  const LIST_NAME = 'Approved_Drivers';
+  const EMAIL_FIELD = 'Username';  // Column holding email
 
-    const msalInstance = new msal.PublicClientApplication(msalConfig);
+  const msalInstance = new msal.PublicClientApplication(msalConfig);
+  let account;
 
-    async function checkAccess(email) {
-      const encodedUrl = "https://smartinfrastructure.sharepoint.com/teams/Pool_Vehicles2/_api/web/lists/getbytitle('Approved_Drivers')/items?$select=Username";
+  async function authenticateUser() {
+    try {
+      const loginResponse = await msalInstance.loginPopup({ scopes: GRAPH_SCOPE });
+      account = loginResponse.account;
+      const email = account.username;
 
-      try {
-        const response = await fetch(encodedUrl, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json;odata=verbose'
-          }
-        });
+      document.body.innerHTML = `<h2>Welcome, ${email}</h2><p>Authentication successful. Checking access...</p>`;
+      checkAccess(email);
 
-        if (!response.ok) throw new Error("SharePoint fetch failed");
+    } catch (error) {
+      console.error("Authentication failed:", error);
+      document.body.innerHTML = "<h2>Login failed</h2><p>See console for details.</p>";
+    }
+  }
 
-        const data = await response.json();
-        const users = data.d.results.map(item => item.Email.toLowerCase());
+  async function checkAccess(email) {
+    try {
+      const tokenResponse = await msalInstance.acquireTokenSilent({ account, scopes: GRAPH_SCOPE });
 
-        if (users.includes(email.toLowerCase())) {
-          // ✅ Redirect to Microsoft Form
-          window.location.href = "https://forms.cloud.microsoft/r/Saurgpg1XQ";
-        } else {
-          document.body.innerHTML = "<h2>Access Denied</h2><p>You are not authorized to access this form.</p>";
+      const graphUrl = `https://graph.microsoft.com/v1.0/sites/${SHAREPOINT_SITE_ID}/lists/${LIST_NAME}/items?$expand=fields&$select=fields`;
+
+      const response = await fetch(graphUrl, {
+        headers: {
+          Authorization: `Bearer ${tokenResponse.accessToken}`,
+          Accept: "application/json"
         }
+      });
 
-      } catch (err) {
-        console.error("Access check error:", err);
-        document.body.innerHTML = "<h2>Error checking access</h2>";
+      const data = await response.json();
+      const emails = data.value.map(item => item.fields[EMAIL_FIELD]?.toLowerCase());
+
+      if (emails.includes(email.toLowerCase())) {
+        window.location.href = "https://forms.cloud.microsoft/r/Saurgpg1XQ";  // ✅ replace with your Form
+      } else {
+        document.body.innerHTML = "<h2>Access Denied</h2><p>You are not authorized to access this form.</p>";
       }
+
+    } catch (err) {
+      console.error("Access check error:", err);
+      document.body.innerHTML = "<h2>Error checking access</h2><p>Details in console.</p>";
     }
+  }
 
-    async function authenticateUser() {
-      try {
-        const loginResponse = await msalInstance.loginPopup({ scopes: ['User.Read'] });
-        const email = loginResponse.account.username;
-
-        document.body.innerHTML = `<h2>Welcome, ${email}</h2><p>Authentication successful. Checking access...</p>`;
-        checkAccess(email);
-
-      } catch (error) {
-        console.error("Authentication failed:", error);
-        document.body.innerHTML = "<h2>Login failed</h2><p>See console for details.</p>";
-      }
-    }
-
-    authenticateUser();
-  </script>
-</body>
-</html>
+  authenticateUser();
+</script>
