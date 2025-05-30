@@ -8,37 +8,52 @@
   <h2>Checking access...</h2>
 
   <script>
-    // Replace these with your actual Azure AD App values
     const msalConfig = {
       auth: {
-        clientId: 'd13c0cca-d75f-4bc9-8dcb-b18315c40d0e', // Replace with your App (client) ID
-        authority: 'https://login.microsoftonline.com/a456fbc2-921d-42a4-a7a8-fc0f343ede61', // Replace with your tenant ID
-        redirectUri: 'https://thejapachipala.github.io/qr-access-check/Checkaccess.html' // MUST match in Azure app registration
+        clientId: 'd13c0cca-d75f-4bc9-8dcb-b18315c40d0e',
+        authority: 'https://login.microsoftonline.com/a456fbc2-921d-42a4-a7a8-fc0f343ede61',
+        redirectUri: 'https://thejapachipala.github.io/qr-access-check/Login.html'
       }
     };
 
     const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-    async function authenticateUser() {
+    async function checkAccess(email) {
+      const encodedUrl = "https://yourdomain.sharepoint.com/sites/yoursite/_api/web/lists/getbytitle('AccessList')/items?$select=Email";
+
       try {
-        // Attempt login
-        const loginResponse = await msalInstance.loginPopup({
-          scopes: ['User.Read']
+        const response = await fetch(encodedUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json;odata=verbose'
+          }
         });
 
-        const account = loginResponse.account;
+        if (!response.ok) throw new Error("SharePoint fetch failed");
 
-        if (!account) {
-          document.body.innerHTML = "<h2>Login succeeded but no account info found.</h2>";
-          return;
+        const data = await response.json();
+        const users = data.d.results.map(item => item.Email.toLowerCase());
+
+        if (users.includes(email.toLowerCase())) {
+          // ✅ Redirect to Microsoft Form
+          window.location.href = "https://forms.office.com/r/your-form-id";
+        } else {
+          document.body.innerHTML = "<h2>Access Denied</h2><p>You are not authorized to access this form.</p>";
         }
 
-        // Display the logged-in email
-        const email = account.username;
-        document.body.innerHTML = `<h2>Welcome, ${email}</h2><p>Authentication successful.</p>`;
+      } catch (err) {
+        console.error("Access check error:", err);
+        document.body.innerHTML = "<h2>Error checking access</h2>";
+      }
+    }
 
-        // Proceed to Step 2: Check against SharePoint list
-        // Placeholder: checkAccess(email); // we will add this in Step 2
+    async function authenticateUser() {
+      try {
+        const loginResponse = await msalInstance.loginPopup({ scopes: ['User.Read'] });
+        const email = loginResponse.account.username;
+
+        document.body.innerHTML = `<h2>Welcome, ${email}</h2><p>Authentication successful. Checking access...</p>`;
+        checkAccess(email);
 
       } catch (error) {
         console.error("Authentication failed:", error);
