@@ -3,11 +3,11 @@ import requests
 
 app = Flask(__name__)
 
-CLIENT_ID = 'your-client-id'
-CLIENT_SECRET = 'your-client-secret'
-TENANT_ID = 'your-tenant-id'
+CLIENT_ID = 'd13c0cca-d75f-4bc9-8dcb-b18315c40d0e'
+CLIENT_SECRET = '0P58Q~SimMHbMDVBEsIvbhMWK3d6NSdwjzoVlcJR'
+TENANT_ID = 'a456fbc2-921d-42a4-a7a8-fc0f343ede61'
 LIST_ID = 'your-list-id'  # or derive via Graph API
-SITE_ID = 'your-site-id'
+SITE_ID = 'TimesheetScoreCards'
 
 def get_access_token():
     url = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
