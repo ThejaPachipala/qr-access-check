@@ -19,7 +19,7 @@
     const msalInstance = new msal.PublicClientApplication(msalConfig);
 
     async function checkAccess(email) {
-      const encodedUrl = "https://yourdomain.sharepoint.com/sites/yoursite/_api/web/lists/getbytitle('AccessList')/items?$select=Email";
+      const encodedUrl = "https://smartinfrastructure.sharepoint.com/teams/Pool_Vehicles2/_api/web/lists/getbytitle('Approved_Drivers')/items?$select=Username";
 
       try {
         const response = await fetch(encodedUrl, {
