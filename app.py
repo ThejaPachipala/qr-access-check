@@ -1,47 +1,38 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS
+import requests
 
 app = Flask(__name__)
 
-# Allow only your GitHub Pages domain to access this API
-CORS(app, origins=["https://thejapachipala.github.io"])
+CLIENT_ID = 'd13c0cca-d75f-4bc9-8dcb-b18315c40d0e'
+CLIENT_SECRET = '0P58Q~SimMHbMDVBEsIvbhMWK3d6NSdwjzoVlcJR'
+TENANT_ID = 'a456fbc2-921d-42a4-a7a8-fc0f343ede61'
+LIST_ID = 'your-list-id'  # or derive via Graph API
+SITE_ID = 'TimesheetScoreCards'
 
-# Simulated SharePoint-approved email list
-approved_emails = [
-    "user1@example.com",
-    "user2@example.com",
-    "thejapachipala@yourdomain.com",  # Example entry
-    # Add more approved emails as needed
-]
+def get_access_token():
+    url = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
+    data = {
+        'client_id': CLIENT_ID,
+        'client_secret': CLIENT_SECRET,
+        'grant_type': 'client_credentials',
+        'scope': 'https://graph.microsoft.com/.default'
+    }
+    resp = requests.post(url, data=data)
+    return resp.json().get('access_token')
 
-# Microsoft Form URL to redirect on approval
-MS_FORM_URL = "https://forms.office.com/r/Saurgpg1XQ"
-
-@app.route("/")
-def home():
-    return "QR Access Check Flask App Running"
-
-@app.route("/check_access", methods=["POST"])
+@app.route('/check_access', methods=['POST'])
 def check_access():
-    try:
-        data = request.get_json()
-        email = data.get("email", "").strip().lower()
-
-        if not email:
-            return jsonify({"error": "Email is required"}), 400
-
-        if email in approved_emails:
-            return jsonify({
-                "access": "granted",
-                "redirect_url": MS_FORM_URL
-            })
-        else:
-            return jsonify({
-                "access": "denied",
-                "message": f"{email} is not in the approved list"
-            }), 403
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-if __name__ == "__main__":
-    app.run(debug=True)
+    email = request.json.get('email')
+    token = get_access_token()
+    headers = {
+        'Authorization': f'Bearer {token}'
+    }
+    url = f"https://graph.microsoft.com/v1.0/sites/{SITE_ID}/lists/Vehiclepool/items?$expand=fields&$top=999"
+    resp = requests.get(url, headers=headers)
+    items = resp.json().get('value', [])
+    
+    for item in items:
+        if item['fields'].get('Username', '').lower() == email.lower():
+            return jsonify({'access': True})
+    
+    return jsonify({'access': False})
