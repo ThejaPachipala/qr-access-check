@@ -5,9 +5,9 @@ import json
 app = Flask(__name__)
 
 # ------------------ CONFIG ------------------
-CLIENT_ID = 'YOUR_CLIENT_ID'
-CLIENT_SECRET = 'YOUR_CLIENT_SECRET'
-TENANT_ID = 'YOUR_TENANT_ID'
+CLIENT_ID = 'd13c0cca-d75f-4bc9-8dcb-b18315c40d0e'
+CLIENT_SECRET = '0P58Q~SimMHbMDVBEsIvbhMWK3d6NSdwjzoVlcJR'
+TENANT_ID = 'a456fbc2-921d-42a4-a7a8-fc0f343ede61'
 
 SHAREPOINT_HOSTNAME = 'smartinfrastructure.sharepoint.com'
 SITE_PATH = 'teams/TimesheetScoreCards'  # Adjust if needed
