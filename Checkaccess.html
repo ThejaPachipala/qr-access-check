@@ -1,7 +1,29 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vehicle Access Check</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2em;
+      background-color: #f9f9f9;
+    }
+    h2 {
+      color: #333;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 1em;
+      margin-top: 10px;
+      display: block;
+    }
+    #status {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
   <h2>Enter your email to proceed</h2>
@@ -13,6 +35,7 @@
   <script>
     async function checkAccess() {
       const email = document.getElementById('emailInput').value.trim();
+
       if (!email) {
         alert("Please enter your email.");
         return;
@@ -29,15 +52,19 @@
           body: JSON.stringify({ email })
         });
 
+        if (!response.ok) {
+          throw new Error("Server returned an error");
+        }
+
         const data = await response.json();
 
-        if (data.allowed) {
-          window.location.href = "https://forms.office.com/r/Saurgpg1XQ"; // Your real MS Form link
+        if (data.allowed === true) {
+          window.location.href = "https://forms.office.com/r/Saurgpg1XQ";  // Replace with your actual MS Form
         } else {
           document.getElementById('status').innerText = "Access denied. You are not in the approved list.";
         }
       } catch (err) {
-        console.error(err);
+        console.error("Error:", err);
         document.getElementById('status').innerText = "Something went wrong. Try again later.";
       }
     }
