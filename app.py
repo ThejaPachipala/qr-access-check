@@ -1,38 +1,73 @@
 from flask import Flask, request, jsonify
 import requests
+from msal import ConfidentialClientApplication
 
 app = Flask(__name__)
 
-CLIENT_ID = 'd13c0cca-d75f-4bc9-8dcb-b18315c40d0e'
-CLIENT_SECRET = '0P58Q~SimMHbMDVBEsIvbhMWK3d6NSdwjzoVlcJR'
-TENANT_ID = 'a456fbc2-921d-42a4-a7a8-fc0f343ede61'
-LIST_ID = 'your-list-id'  # or derive via Graph API
-SITE_ID = 'TimesheetScoreCards'
+# Config
+CLIENT_ID = 'YOUR-CLIENT-ID'
+CLIENT_SECRET = 'YOUR-CLIENT-SECRET'
+TENANT_ID = 'YOUR-TENANT-ID'
+SHAREPOINT_SITE = 'smartinfrastructure.sharepoint.com'
+SITE_PATH = 'teams/TimesheetScoreCards'
+LIST_NAME = 'Vehiclepool'
 
+# Scopes for SharePoint access
+SCOPE = [f'https://{SHAREPOINT_SITE}/.default']
+
+# MSAL authority
+AUTHORITY = f'https://login.microsoftonline.com/{TENANT_ID}'
+
+# Get MSAL access token
 def get_access_token():
-    url = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
-    data = {
-        'client_id': CLIENT_ID,
-        'client_secret': CLIENT_SECRET,
-        'grant_type': 'client_credentials',
-        'scope': 'https://graph.microsoft.com/.default'
-    }
-    resp = requests.post(url, data=data)
-    return resp.json().get('access_token')
+    app = ConfidentialClientApplication(
+        CLIENT_ID,
+        authority=AUTHORITY,
+        client_credential=CLIENT_SECRET
+    )
+    token_result = app.acquire_token_silent(SCOPE, account=None)
+    if not token_result:
+        token_result = app.acquire_token_for_client(scopes=SCOPE)
 
-@app.route('/check_access', methods=['POST'])
-def check_access():
-    email = request.json.get('email')
-    token = get_access_token()
+    if 'access_token' in token_result:
+        return token_result['access_token']
+    else:
+        raise Exception(f"Token error: {token_result.get('error_description')}")
+
+# Check if user email is authorized
+def is_email_authorized(email):
+    access_token = get_access_token()
+    url = f'https://graph.microsoft.com/v1.0/sites/{SHAREPOINT_SITE}:/{SITE_PATH}:/lists/{LIST_NAME}/items?$expand=fields&$top=999'
+
     headers = {
-        'Authorization': f'Bearer {token}'
+        'Authorization': f'Bearer {access_token}',
+        'Accept': 'application/json'
     }
-    url = f"https://graph.microsoft.com/v1.0/sites/{SITE_ID}/lists/Vehiclepool/items?$expand=fields&$top=999"
-    resp = requests.get(url, headers=headers)
-    items = resp.json().get('value', [])
+
+    response = requests.get(url, headers=headers)
+    if not response.ok:
+        raise Exception(f'SharePoint API error: {response.status_code} {response.text}')
+
+    items = response.json().get('value', [])
+    email = email.lower()
     
     for item in items:
-        if item['fields'].get('Username', '').lower() == email.lower():
-            return jsonify({'access': True})
-    
-    return jsonify({'access': False})
+        username = item.get("fields", {}).get("Username", "").lower()
+        if username == email:
+            return True
+    return False
+
+# Route to check email
+@app.route('/check_email')
+def check_email():
+    email = request.args.get('email', '').strip().lower()
+    if not email:
+        return jsonify({'error': 'Missing email'}), 400
+    try:
+        authorized = is_email_authorized(email)
+        return jsonify({'authorized': authorized})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True)
