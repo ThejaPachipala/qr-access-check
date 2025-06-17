@@ -84,7 +84,7 @@
           // Redirect to MS Form
           window.location.replace("https://forms.cloud.microsoft/r/Saurgpg1XQ");
         } else {
-          document.body.innerHTML = `<h2>Not Authorized</h2><p>${userEmail} is not listed in Vehiclepool.</p>`;
+          document.body.innerHTML = `<h2>Not Authorized</h2><p>${userEmail} is not on the approved drivers list.</p>`;
         }
       } catch (error) {
         console.error("Access check error:", error);
