@@ -76,7 +76,7 @@
 
         // Find if user email matches the Username field in any item
         const match = items.find(item => {
-          const username = item.fields?.Username?.toLowerCase();
+          const username = item.fields?.TitleId?.toLowerCase();
           return username === userEmail.toLowerCase();
         });
 
