@@ -123,17 +123,29 @@ async function checkAccess(token, userEmail) {
   }
 }
 
-
-
     function showError(title, message) {
-      document.body.innerHTML = `
-        <div class="error-screen">
-          <img src="https://www.smart-infrastructure.com/wp-content/uploads/2019/06/SIG_LOGO_HOR_PNG-1.png" class="logo" alt="SIG Logo" />
-          <h1>${title}</h1>
-          <p>${message}</p>
-        </div>
-      `;
-    }
+  document.body.innerHTML = `
+    <div style="
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      height: 100vh;
+      padding: 2rem;
+      background-color: #f9f9f9;
+    ">
+      <img 
+        src="https://upload.wikimedia.org/wikipedia/commons/4/48/Microsoft_logo.svg" 
+        alt="Microsoft Logo" 
+        style="width: 180px; margin-bottom: 2rem;"
+      />
+      <h1 style="color: #d8000c; font-size: 2rem; margin-bottom: 1rem;">${title}</h1>
+      <p style="font-size: 1.2rem; color: #333; max-width: 600px;">${message}</p>
+    </div>
+  `;
+}
+
   </script>
 </body>
 </html>
