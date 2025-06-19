@@ -95,25 +95,34 @@ async function checkAccess(token, userEmail) {
     const data = await response.json();
     const items = data.value || [];
 
-    console.log("Fetched items:", items); // 🔍 Inspect field structure
+    if (items.length === 0) {
+      showError("Access Denied", "Access list is empty. Please contact the administrator.");
+      return;
+    }
 
-    const match = items.find(item => {
-      const fields = item.fields;
-      const usernameField = fields?.Username || fields?.TitleId || fields?.Title;
-      if (!usernameField) return false;
+    const emailList = items.map(item => {
+      const fields = item.fields || {};
+      return (fields.Username || fields.TitleId || fields.Title || "").trim();
+    }).filter(email => email !== "");
 
-      return usernameField.toLowerCase() === userEmail.toLowerCase();
-    });
+    if (emailList.length === 0) {
+      showError("Access Denied", "No email records found in the list.");
+      return;
+    }
 
-    if (match) {
+    const matched = emailList.find(e => e.toLowerCase() === userEmail.toLowerCase());
+
+    if (matched) {
       window.location.replace("https://forms.cloud.microsoft/r/Saurgpg1XQ");
     } else {
       showError("Not Authorized", `${userEmail} is not on the approved drivers list.`);
     }
+
   } catch (error) {
     showError("Access Error", error.message);
   }
 }
+
 
 
     function showError(title, message) {
