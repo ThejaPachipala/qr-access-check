@@ -123,28 +123,53 @@ async function checkAccess(token, userEmail) {
   }
 }
 
-    function showError(title, message) {
+function showError(title, message) {
   document.body.innerHTML = `
     <div style="
       display: flex;
-      flex-direction: column;
       justify-content: center;
       align-items: center;
-      text-align: center;
       height: 100vh;
+      background-color: #f4f6f8;
       padding: 2rem;
-      background-color: #f9f9f9;
     ">
-      <img 
-        src="https://www.smart-infrastructure.com/wp-content/uploads/2019/06/SIG_LOGO_HOR_PNG-1.png" 
-        alt="SIG Logo" 
-        style="width: 180px; margin-bottom: 2rem;"
-      />
-      <h1 style="color: #d8000c; font-size: 2rem; margin-bottom: 1rem;">${title}</h1>
-      <p style="font-size: 1.2rem; color: #333; max-width: 700px;">${message}</p>
+      <div style="
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        max-width: 500px;
+        width: 100%;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      ">
+        <img 
+          src="https://upload.wikimedia.org/wikipedia/commons/4/48/Microsoft_logo.svg" 
+          alt="Microsoft Logo" 
+          style="width: 160px; margin-bottom: 1.5rem;" 
+        />
+
+        <img 
+          src="https://cdn-icons-png.flaticon.com/512/1828/1828843.png" 
+          alt="Access Denied" 
+          style="width: 100px; margin-bottom: 1rem;" 
+        />
+
+        <h1 style="font-size: 1.8rem; color: #d8000c; margin-bottom: 1rem;">
+          ${title}
+        </h1>
+
+        <p style="font-size: 1rem; color: #444; margin-bottom: 1rem;">
+          ${message}
+        </p>
+
+        <p style="font-size: 0.9rem; color: #888;">
+          If you believe this is a mistake, please contact your administrator.
+        </p>
+      </div>
     </div>
   `;
 }
+
 
   </script>
 </body>
