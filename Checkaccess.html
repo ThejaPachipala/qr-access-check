@@ -77,38 +77,44 @@
       showError("Login Error", err.message);
     });
 
-    async function checkAccess(token, userEmail) {
-      try {
-        const url = `https://graph.microsoft.com/v1.0/sites/${SHAREPOINT_HOSTNAME}:/${SITE_PATH}:/lists/${LIST_NAME}/items?$expand=fields&$top=999`;
+async function checkAccess(token, userEmail) {
+  try {
+    const url = `https://graph.microsoft.com/v1.0/sites/${SHAREPOINT_HOSTNAME}:/${SITE_PATH}:/lists/${LIST_NAME}/items?$expand=fields&$top=999`;
 
-        const response = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json"
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`Graph API error: ${response.status} ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        const items = data.value || [];
-
-        const match = items.find(item => {
-          const username = item.fields?.TitleId?.toLowerCase();
-          return username === userEmail.toLowerCase();
-        });
-
-        if (match) {
-          window.location.replace("https://forms.cloud.microsoft/r/Saurgpg1XQ");
-        } else {
-          showError("Not Authorized", `${userEmail} is not on the approved drivers list.`);
-        }
-      } catch (error) {
-        showError("Access Error", error.message);
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json"
       }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Graph API error: ${response.status} ${response.statusText}`);
     }
+
+    const data = await response.json();
+    const items = data.value || [];
+
+    console.log("Fetched items:", items); // 🔍 Inspect field structure
+
+    const match = items.find(item => {
+      const fields = item.fields;
+      const usernameField = fields?.Username || fields?.TitleId || fields?.Title;
+      if (!usernameField) return false;
+
+      return usernameField.toLowerCase() === userEmail.toLowerCase();
+    });
+
+    if (match) {
+      window.location.replace("https://forms.cloud.microsoft/r/Saurgpg1XQ");
+    } else {
+      showError("Not Authorized", `${userEmail} is not on the approved drivers list.`);
+    }
+  } catch (error) {
+    showError("Access Error", error.message);
+  }
+}
+
 
     function showError(title, message) {
       document.body.innerHTML = `
