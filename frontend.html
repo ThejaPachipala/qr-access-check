@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Welcome</title>
+  <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
+</head>
+<body>
+  <h2>Authenticating...</h2>
+
+  <script>
+    const msalInstance = new msal.PublicClientApplication({
+      auth: {
+        clientId: "YOUR_CLIENT_ID",
+        authority: "https://login.microsoftonline.com/YOUR_TENANT_ID",
+        redirectUri: window.location.href
+      }
+    });
+
+    msalInstance.loginPopup({ scopes: ['User.Read'] }).then(async response => {
+      const userEmail = response.account.username;
+      document.body.innerHTML = `<h3>Welcome, ${userEmail}</h3><p>Checking access...</p>`;
+
+      const res = await fetch("/api/approved-emails");
+      const { emails } = await res.json();
+
+      const matched = emails.find(email => email.toLowerCase() === userEmail.toLowerCase());
+
+      if (matched) {
+        window.location.replace("https://forms.cloud.microsoft/r/Saurgpg1XQ");
+      } else {
+        document.body.innerHTML += `<p style="color:red;">Access denied</p>`;
+      }
+    });
+  </script>
+</body>
+</html>
