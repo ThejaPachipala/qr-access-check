@@ -9,31 +9,11 @@
       text-align: center;
       padding: 2rem;
     }
-    .error-screen {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-    }
-    .error-screen h1 {
-      font-size: 2rem;
-      color: red;
-    }
-    .error-screen p {
-      font-size: 1.2rem;
-    }
-    .logo {
-      width: 120px;
-      margin-bottom: 1rem;
-    }
   </style>
+  <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
 </head>
 <body>
   <h2>Checking access...</h2>
-
-  <!-- Load MSAL -->
-  <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
 
   <script>
     const msalConfig = {
@@ -50,14 +30,19 @@
 
     const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-    // Handle redirect after login
     msalInstance.handleRedirectPromise().then(async (response) => {
       let account = response?.account || msalInstance.getAllAccounts()[0];
 
       if (!account) {
-        // No session, redirect to login
-        msalInstance.loginRedirect({ scopes: ['User.Read', 'Sites.Read.All'] });
-        return;
+        try {
+          // Try loginPopup first
+          const popupResponse = await msalInstance.loginPopup({ scopes: ['User.Read', 'Sites.Read.All'] });
+          account = popupResponse.account;
+        } catch (popupError) {
+          console.warn("Popup failed or blocked. Falling back to redirect...");
+          msalInstance.loginRedirect({ scopes: ['User.Read', 'Sites.Read.All'] });
+          return;
+        }
       }
 
       const email = account.username;
@@ -77,100 +62,98 @@
       showError("Login Error", err.message);
     });
 
-async function checkAccess(token, userEmail) {
-  try {
-    const url = `https://graph.microsoft.com/v1.0/sites/${SHAREPOINT_HOSTNAME}:/${SITE_PATH}:/lists/${LIST_NAME}/items?$expand=fields&$top=999`;
+    async function checkAccess(token, userEmail) {
+      try {
+        const url = `https://graph.microsoft.com/v1.0/sites/${SHAREPOINT_HOSTNAME}:/${SITE_PATH}:/lists/${LIST_NAME}/items?$expand=fields&$top=999`;
 
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/json"
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json"
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Graph API error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        const items = data.value || [];
+
+        if (items.length === 0) {
+          showError("Access Denied", "Access list is empty. Please contact the administrator.");
+          return;
+        }
+
+        const emailList = items.map(item => {
+          const fields = item.fields || {};
+          return (fields.Username || fields.TitleId || fields.Title || "").trim();
+        }).filter(email => email !== "");
+
+        if (emailList.length === 0) {
+          showError("Access Denied", "No email records found in the list.");
+          return;
+        }
+
+        const matched = emailList.find(e => e.toLowerCase() === userEmail.toLowerCase());
+
+        if (matched) {
+          window.location.replace("https://forms.cloud.microsoft/r/Saurgpg1XQ");
+        } else {
+          showError("Not Authorized", `${userEmail} is not on the approved drivers list.`);
+        }
+
+      } catch (error) {
+        showError("Access Error", error.message);
       }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Graph API error: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    const items = data.value || [];
+    function showError(title, message) {
+      document.body.innerHTML = `
+        <div style="
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+          background-color: #f4f6f8;
+          padding: 2rem;
+        ">
+          <div style="
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+          ">
+            <img 
+              src="https://www.smart-infrastructure.com/wp-content/uploads/2019/06/SIG_LOGO_HOR_PNG-1.png" 
+              alt="SIG Logo" 
+              style="width: 160px; margin-bottom: 1.5rem;" 
+            />
 
-    if (items.length === 0) {
-      showError("Access Denied", "Access list is empty. Please contact the administrator.");
-      return;
+            <img 
+              src="https://cdn-icons-png.flaticon.com/512/1828/1828843.png" 
+              alt="Access Denied" 
+              style="width: 100px; margin-bottom: 1rem;" 
+            />
+
+            <h1 style="font-size: 1.8rem; color: #d8000c; margin-bottom: 1rem;">
+              ${title}
+            </h1>
+
+            <p style="font-size: 1rem; color: #444; margin-bottom: 1rem;">
+              ${message}
+            </p>
+
+            <p style="font-size: 0.9rem; color: #888;">
+              If you believe this is a mistake, please contact the Fleet Management Group.
+            </p>
+          </div>
+        </div>
+      `;
     }
-
-    const emailList = items.map(item => {
-      const fields = item.fields || {};
-      return (fields.Username || fields.TitleId || fields.Title || "").trim();
-    }).filter(email => email !== "");
-
-    if (emailList.length === 0) {
-      showError("Access Denied", "No email records found in the list.");
-      return;
-    }
-
-    const matched = emailList.find(e => e.toLowerCase() === userEmail.toLowerCase());
-
-    if (matched) {
-      window.location.replace("https://forms.cloud.microsoft/r/Saurgpg1XQ");
-    } else {
-      showError("Not Authorized", `${userEmail} is not on the approved drivers list.`);
-    }
-
-  } catch (error) {
-    showError("Access Error", error.message);
-  }
-}
-
-function showError(title, message) {
-  document.body.innerHTML = `
-    <div style="
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background-color: #f4f6f8;
-      padding: 2rem;
-    ">
-      <div style="
-        background: white;
-        border-radius: 12px;
-        padding: 2rem;
-        max-width: 500px;
-        width: 100%;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-        text-align: center;
-      ">
-        <img 
-          src="https://www.smart-infrastructure.com/wp-content/uploads/2019/06/SIG_LOGO_HOR_PNG-1.png" 
-          alt="SIG Logo" 
-          style="width: 160px; margin-bottom: 1.5rem;" 
-        />
-
-        <img 
-          src="https://cdn-icons-png.flaticon.com/512/1828/1828843.png" 
-          alt="Access Denied" 
-          style="width: 100px; margin-bottom: 1rem;" 
-        />
-
-        <h1 style="font-size: 1.8rem; color: #d8000c; margin-bottom: 1rem;">
-          ${title}
-        </h1>
-
-        <p style="font-size: 1rem; color: #444; margin-bottom: 1rem;">
-          ${message}
-        </p>
-
-        <p style="font-size: 0.9rem; color: #888;">
-          If you believe this is a mistake, please contact the Fleet Management Group.
-        </p>
-      </div>
-    </div>
-  `;
-}
-
-
   </script>
 </body>
 </html>
