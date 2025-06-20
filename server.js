@@ -35,7 +35,7 @@ app.get('/api/approved-emails', async (req, res) => {
   try {
     const token = await getAccessToken();
 
-    const listUrl = `https://graph.microsoft.com/v1.0/sites/${process.env.SHAREPOINT_HOSTNAME}:/${process.env.SITE_PATH}:/lists/${process.env.LIST_NAME}/items?$expand=fields&$top=999`;
+    const listUrl = `https://graph.microsoft.com/v1.0/sites/${SHAREPOINT_HOSTNAME}:/${SITE_PATH}:/lists/${LIST_NAME}/items?$expand=fields&$top=999`;
 
     const listRes = await axios.get(listUrl, {
       headers: {
