@@ -20,7 +20,7 @@
       const userEmail = response.account.username;
       document.body.innerHTML = `<h3>Welcome, ${userEmail}</h3><p>Checking access...</p>`;
 
-      const res = await fetch("/api/approved-emails");
+      const res = await fetch("https://qr-access-check.onrender.com/api/approved-emails");
       const { emails } = await res.json();
 
       const matched = emails.find(email => email.toLowerCase() === userEmail.toLowerCase());
