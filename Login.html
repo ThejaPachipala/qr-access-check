@@ -67,29 +67,32 @@
     console.log("Authenticated user:", email); // Debug log
     document.body.innerHTML = `<h2>Welcome, ${email}</h2><p>Checking SharePoint access...</p>`;
     
-    try {
-      const tokenResponse = await msalInstance.acquireTokenSilent({
-        account: account,
-        scopes: ['User.Read', 'Sites.Read.All']
-      });
-      console.log("Token acquired:", tokenResponse.accessToken); // Debug log
-      checkAccess(tokenResponse.accessToken, email);
-    } catch (tokenError) {
-      console.error("Token acquisition failed:", tokenError);
-      if (tokenError.name === "InteractionRequiredAuthError") {
-        try {
-          const tokenResponse = await msalInstance.acquireTokenPopup({
-            account: account,
-            scopes: ['User.Read', 'Sites.Read.All']
-          });
-          checkAccess(tokenResponse.accessToken, email);
-        } catch (fallbackError) {
-          showError("Authentication Failed", fallbackError.message);
+// Add 2-second delay before checking access
+    setTimeout(async () => {
+      try {
+        const tokenResponse = await msalInstance.acquireTokenSilent({
+          account: account,
+          scopes: ['User.Read', 'Sites.Read.All']
+        });
+        console.log("Token acquired:", tokenResponse.accessToken); // Debug log
+        checkAccess(tokenResponse.accessToken, email);
+      } catch (tokenError) {
+        console.error("Token acquisition failed:", tokenError);
+        if (tokenError.name === "InteractionRequiredAuthError") {
+          try {
+            const tokenResponse = await msalInstance.acquireTokenPopup({
+              account: account,
+              scopes: ['User.Read', 'Sites.Read.All']
+            });
+            checkAccess(tokenResponse.accessToken, email);
+          } catch (fallbackError) {
+            showError("Authentication Failed", fallbackError.message);
+          }
+        } else {
+          showError("Authentication Failed", tokenError.message);
         }
-      } else {
-        showError("Authentication Failed", tokenError.message);
       }
-    }
+    }, 3000); // 2-second delay
   }).catch(err => {
     console.error("Redirect promise error:", err);
     showError("Login Error", err.message);
