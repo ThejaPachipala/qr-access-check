@@ -47,16 +47,18 @@
 
       const email = account.username;
       document.body.innerHTML = `<h2>Welcome, ${email}</h2><p>Checking SharePoint access...</p>`;
-
-      try {
-        const tokenResponse = await msalInstance.acquireTokenSilent({
-          account: account,
-          scopes: ['User.Read', 'Sites.Read.All']
-        });
-        checkAccess(tokenResponse.accessToken, email);
-      } catch (tokenError) {
-        showError("Authentication failed", tokenError.message);
-      }
+      
+      setTimeout(async () => {
+        try {
+          const tokenResponse = await msalInstance.acquireTokenSilent({
+            account: account,
+            scopes: ['User.Read', 'Sites.Read.All']
+          });
+          checkAccess(tokenResponse.accessToken, email);
+        } catch (tokenError) {
+          showError("Authentication failed", tokenError.message);
+        }
+      }, 3000); // 3 seconds delay
 
     }).catch(err => {
       showError("Login Error", err.message);
